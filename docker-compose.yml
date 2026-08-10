@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  docucluster-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=docucluster_ai_production_secret_key_change_me
+      - DATABASE_URL=sqlite:////app/backend/storage/docucluster.db
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      - docucluster_storage:/app/backend/storage
+
+volumes:
+  docucluster_storage:
+
