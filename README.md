@@ -53,25 +53,25 @@ Imagine you have dozens (or hundreds) of documents — research papers, reports,
 DocuCluster is structured as a three-layer system:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      FRONTEND                           │
-│   HTML5 + Vanilla JS + Plotly.js + Bootstrap 5          │
-│   Dark glassmorphic UI with interactive dendrogram      │
-├─────────────────────────────────────────────────────────┤
-│                      REST API                           │
-│   Flask Blueprints: v1 (session) + v2 (persistent)     │
-│   + MCP JSON-RPC 2.0 endpoint for machine clients      │
-├────────────┬────────────┬───────────┬───────────────────┤
-│  Clustering │  Semantic  │    RAG    │   Multi-Step      │
-│   Engine    │   Engine   │  Engine   │   Agent           │
-│ TF-IDF +    │ Embeddings │ BM25 +    │ Plan → Retrieve   │
-│ SciPy       │ + UMAP +   │ Dense +   │ → Synthesize      │
-│ Linkage     │ HDBSCAN    │ RRF +     │                   │
-│             │            │ Gemini    │                   │
-├────────────┴────────────┴───────────┴───────────────────┤
-│                   PERSISTENCE                           │
-│   SQLite (runs, documents, clusters) + File Storage     │
-└─────────────────────────────────────────────────────────┘
+╔═══════════════════════════════════════════════════════════╗
+║                       FRONTEND                           ║
+║   HTML5 + Vanilla JS + Plotly.js + Bootstrap 5           ║
+║   Dark glassmorphic UI with interactive dendrogram       ║
+╠═══════════════════════════════════════════════════════════╣
+║                       REST API                           ║
+║   Flask Blueprints: v1 (session) + v2 (persistent)       ║
+║   + MCP JSON-RPC 2.0 endpoint for machine clients        ║
+╠══════════════╦══════════════╦═════════════╦═══════════════╣
+║  Clustering  ║   Semantic   ║     RAG     ║  Multi-Step   ║
+║    Engine    ║    Engine    ║   Engine    ║    Agent      ║
+║──────────────║──────────────║─────────────║───────────────║
+║  TF-IDF +    ║  Embeddings  ║  BM25 +     ║ Plan →        ║
+║  SciPy       ║  + UMAP +    ║  Dense +    ║ Retrieve →    ║
+║  Linkage     ║  HDBSCAN     ║  Gemini     ║ Synthesize    ║
+╠══════════════╩══════════════╩═════════════╩═══════════════╣
+║                      PERSISTENCE                         ║
+║   SQLite (runs, documents, clusters) + File Storage      ║
+╚═══════════════════════════════════════════════════════════╝
 ```
 
 **Key architectural choices:**
@@ -85,51 +85,52 @@ DocuCluster is structured as a three-layer system:
 ## System Architecture Diagram
 
 ```
-                            ┌──────────────┐
-                            │   Browser    │
-                            │  (User UI)   │
-                            └──────┬───────┘
-                                   │ HTTP
-                            ┌──────▼───────┐
-                            │  Flask App   │
-                            │  (Waitress)  │
-                            └──────┬───────┘
-                                   │
-              ┌────────────────────┼────────────────────┐
-              │                    │                    │
-     ┌────────▼────────┐  ┌───────▼────────┐  ┌───────▼────────┐
-     │  v1 Blueprints  │  │  v2 Blueprints │  │  MCP Server    │
-     │  /upload        │  │  /api/v2/runs  │  │  /api/mcp      │
-     │  /cluster       │  │  /api/v2/chat  │  │  JSON-RPC 2.0  │
-     │  /export        │  │  /api/v2/...   │  │                │
-     └────────┬────────┘  └───────┬────────┘  └───────┬────────┘
-              │                   │                    │
-              └───────────────────┼────────────────────┘
-                                  │
-          ┌───────────────────────┼───────────────────────┐
-          │                       │                       │
- ┌────────▼────────┐    ┌────────▼────────┐    ┌─────────▼────────┐
- │ ClusteringEngine │    │ SemanticEngine  │    │    RAG Engine     │
- │                  │    │                 │    │                   │
- │ TF-IDF Matrix    │    │ SentenceTransf. │    │ Chunker           │
- │ SciPy Linkage    │    │ UMAP Reduction  │    │ BM25 + Dense      │
- │ fcluster Assign  │    │ HDBSCAN Cluster │    │ RRF Fusion        │
- │ Plotly Dendro    │    │ c-TF-IDF Keys   │    │ Gemini LLM        │
- └─────────────────┘    └─────────────────┘    └────────┬──────────┘
-                                                         │
-                                               ┌─────────▼────────┐
-                                               │ LangGraph Agent   │
-                                               │ Plan → Retrieve   │
-                                               │ → Compare →       │
-                                               │ Synthesize        │
-                                               └──────────────────┘
-          │                       │                       │
-          └───────────────────────┼───────────────────────┘
-                                  │
-                         ┌────────▼────────┐
-                         │   SQLite DB +   │
-                         │   File Storage  │
-                         └─────────────────┘
+                              ┌────────────────┐
+                              │    Browser     │
+                              │   (User UI)    │
+                              └───────┬────────┘
+                                      │ HTTP
+                              ┌───────▼────────┐
+                              │   Flask App    │
+                              │   (Waitress)   │
+                              └───────┬────────┘
+                                      │
+            ┌─────────────────────────┼─────────────────────────┐
+            │                         │                         │
+   ┌────────▼─────────┐     ┌─────────▼─────────┐    ┌─────────▼─────────┐
+   │  v1 Blueprints   │     │  v2 Blueprints    │    │   MCP Server      │
+   │  /upload         │     │  /api/v2/runs     │    │   /api/mcp        │
+   │  /cluster        │     │  /api/v2/chat     │    │   JSON-RPC 2.0    │
+   │  /export         │     │  /api/v2/...      │    │                   │
+   └────────┬─────────┘     └─────────┬─────────┘    └─────────┬─────────┘
+            │                         │                         │
+            └─────────────────────────┼─────────────────────────┘
+                                      │
+          ┌───────────────────────────┼───────────────────────────┐
+          │                           │                           │
+ ┌────────▼──────────┐     ┌──────────▼──────────┐    ┌───────────▼──────────┐
+ │ Clustering Engine │     │  Semantic Engine    │    │     RAG Engine       │
+ │──────────────────·│     │────────────────────·│    │─────────────────────·│
+ │ TF-IDF Matrix     │     │ SentenceTransformer │    │ Chunker              │
+ │ SciPy Linkage     │     │ UMAP Reduction      │    │ BM25 + Dense         │
+ │ fcluster Assign   │     │ HDBSCAN Cluster     │    │ RRF Fusion           │
+ │ Plotly Dendro     │     │ c-TF-IDF Keywords   │    │ Gemini LLM           │
+ └───────────────────┘     └─────────────────────┘    └───────────┬──────────┘
+                                                                  │
+                                                      ┌───────────▼──────────┐
+                                                      │  LangGraph Agent     │
+                                                      │─────────────────────·│
+                                                      │  Plan → Retrieve →   │
+                                                      │  Compare →           │
+                                                      │  Synthesize          │
+                                                      └──────────────────────┘
+          │                           │                           │
+          └───────────────────────────┼───────────────────────────┘
+                                      │
+                            ┌─────────▼──────────┐
+                            │    SQLite DB +     │
+                            │    File Storage    │
+                            └────────────────────┘
 ```
 
 ---
@@ -139,17 +140,24 @@ DocuCluster is structured as a three-layer system:
 ### Classic Mode (TF-IDF + Hierarchical Linkage)
 
 ```
-Documents ──► TF-IDF Vectorizer ──► Term-Document Matrix
-                                           │
-                                    SciPy Linkage
-                                   (Ward/Complete/
-                                    Average/Single)
-                                           │
-                                    Linkage Matrix
-                                     ┌─────┴─────┐
-                                     │           │
-                              fcluster        Plotly
-                            (assignments)   Dendrogram
+  ┌───────────┐        ┌────────────────────┐        ┌──────────────────────┐
+  │ Documents ├───────►│ TF-IDF Vectorizer  ├───────►│ Term-Document Matrix │
+  └───────────┘        └────────────────────┘        └──────────┬───────────┘
+                                                                │
+                                                     ┌──────────▼───────────┐
+                                                     │    SciPy Linkage     │
+                                                     │  (Ward / Complete /  │
+                                                     │  Average / Single)   │
+                                                     └──────────┬───────────┘
+                                                                │
+                                                     ┌──────────▼───────────┐
+                                                     │    Linkage Matrix    │
+                                                     └─────┬───────────┬────┘
+                                                           │           │
+                                                  ┌────────▼───┐  ┌────▼──────────┐
+                                                  │  fcluster  │  │    Plotly     │
+                                                  │(assignment)│  │  Dendrogram   │
+                                                  └────────────┘  └───────────────┘
 ```
 
 1. **TF-IDF Vectorization** — Each document becomes a sparse vector of term frequencies weighted by inverse document frequency. Common words like "the" get low weight; distinctive words get high weight.
@@ -160,19 +168,25 @@ Documents ──► TF-IDF Vectorizer ──► Term-Document Matrix
 ### Semantic Mode (Embeddings + UMAP + HDBSCAN)
 
 ```
-Documents ──► Sentence-Transformer ──► 384-dim Embeddings
-                 (all-MiniLM-L6-v2)            │
-                                          UMAP Reduction
-                                          (→ 2D or 5D)
-                                               │
-                                           HDBSCAN
-                                      (density clustering)
-                                               │
-                                    ┌──────────┴──────────┐
-                                    │                     │
-                              Cluster Labels        c-TF-IDF
-                             (with outlier=-1)    (per-cluster
-                                                   keywords)
+  ┌───────────┐        ┌──────────────────────┐        ┌────────────────────┐
+  │ Documents ├───────►│ Sentence-Transformer ├───────►│ 384-dim Embeddings │
+  └───────────┘        │  (all-MiniLM-L6-v2)  │        └─────────┬──────────┘
+                       └──────────────────────┘                  │
+                                                      ┌──────────▼──────────┐
+                                                      │   UMAP Reduction    │
+                                                      │    (→ 2D or 5D)     │
+                                                      └──────────┬──────────┘
+                                                                 │
+                                                      ┌──────────▼──────────┐
+                                                      │      HDBSCAN       │
+                                                      │ (density clustering)│
+                                                      └─────┬──────────┬────┘
+                                                            │          │
+                                                  ┌─────────▼──┐  ┌────▼──────────┐
+                                                  │  Cluster   │  │   c-TF-IDF    │
+                                                  │   Labels   │  │ (per-cluster   │
+                                                  │(outlier=-1)│  │   keywords)    │
+                                                  └────────────┘  └───────────────┘
 ```
 
 1. **Embedding** — A sentence-transformer model (`all-MiniLM-L6-v2`, ~80 MB download on first run) converts each document into a 384-dimensional dense vector that captures semantic meaning.
@@ -187,30 +201,39 @@ Documents ──► Sentence-Transformer ──► 384-dim Embeddings
 The Retrieval-Augmented Generation pipeline lets you ask natural language questions about your uploaded documents:
 
 ```
-User Question
-      │
-      ▼
-┌─────────────┐     ┌──────────────┐
-│ BM25 Search │     │ Dense Vector │
-│ (keyword)   │     │  Search      │
-└──────┬──────┘     └──────┬───────┘
-       │                   │
-       └─────────┬─────────┘
-                 │
-          Reciprocal Rank
-          Fusion (RRF)
-                 │
-          Top-K Chunks
-                 │
-       ┌─────────▼─────────┐
-       │  Gemini LLM API   │
-       │  (with context +  │
-       │   citations)      │
-       └─────────┬─────────┘
-                 │
-          Answer + Source
-          Citations with
-          Line Numbers
+                           ┌─────────────────┐
+                           │  User Question  │
+                           └────────┬────────┘
+                                    │
+                  ┌─────────────────┴──────────────────┐
+                  │                                    │
+       ┌──────────▼──────────┐            ┌───────────▼───────────┐
+       │    BM25 Search      │            │   Dense Vector Search │
+       │    (keyword)        │            │   (semantic)          │
+       └──────────┬──────────┘            └───────────┬───────────┘
+                  │                                    │
+                  └─────────────────┬───────────────────┘
+                                    │
+                         ┌──────────▼──────────┐
+                         │  Reciprocal Rank    │
+                         │   Fusion (RRF)      │
+                         └──────────┬──────────┘
+                                    │
+                         ┌──────────▼──────────┐
+                         │   Top-K Chunks      │
+                         └──────────┬──────────┘
+                                    │
+                         ┌──────────▼──────────┐
+                         │  Gemini LLM API     │
+                         │  (with context +    │
+                         │   citations)        │
+                         └──────────┬──────────┘
+                                    │
+                         ┌──────────▼──────────┐
+                         │  Answer + Source    │
+                         │  Citations with     │
+                         │  Line Numbers       │
+                         └─────────────────────┘
 ```
 
 1. **Chunking** — Documents are split into overlapping chunks (~500 chars, 100 char overlap) with line-number tracking.
