@@ -135,7 +135,7 @@ async function executeV2Clustering() {
 
   if (btnCluster) {
     btnCluster.disabled = true;
-    btnCluster.innerHTML = `<span class="spinner-pulse me-2"></span> Running ${currentRunMode.toUpperCase()} Pipeline...`;
+    btnCluster.innerHTML = `<span class="spinner-pulse me-2"></span> Running ${currentRunMode} clustering...`;
   }
 
   try {
@@ -180,7 +180,7 @@ async function executeV2Clustering() {
     await fetchAndRenderClusterIntelligence();
 
     if (typeof showAlert === 'function') {
-      showAlert(`Clustering complete (${currentRunMode.toUpperCase()} mode)!`, 'success');
+      showAlert(`Clustering complete (${currentRunMode} mode).`, 'success');
     }
 
   } catch (err) {
@@ -197,7 +197,7 @@ async function executeV2Clustering() {
   } finally {
     if (btnCluster) {
       btnCluster.disabled = false;
-      btnCluster.innerHTML = `<i class="bi bi-diagram-2 me-2"></i> Run ${currentRunMode.toUpperCase()} Clustering`;
+      btnCluster.innerHTML = `<i class="bi bi-diagram-2 me-2"></i> Run ${currentRunMode} clustering`;
     }
   }
 }
@@ -426,10 +426,10 @@ async function loadRunHistory() {
       item.innerHTML = `
         <div class="d-flex justify-content-between align-items-center">
           <h6 class="fw-semibold mb-0">${escapeHtml(r.name)}</h6>
-          <span class="badge bg-secondary small">${r.mode.toUpperCase()}</span>
+          <span class="badge bg-secondary small">${r.mode}</span>
         </div>
         <div class="text-muted small mt-1">
-          <span>Docs: ${r.doc_count}</span> &bull; <span>Clusters: ${r.cluster_count || 0}</span> &bull; <span class="text-dim">${r.created_at ? r.created_at.substring(0, 16) : ''}</span>
+          <span>Docs: ${r.doc_count}</span> &bull; <span>Clusters: ${r.cluster_count || 0}</span> &bull; <span>${r.created_at ? r.created_at.substring(0, 16) : ''}</span>
         </div>
       `;
       item.onclick = () => {
