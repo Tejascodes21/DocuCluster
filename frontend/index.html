@@ -101,29 +101,29 @@
 
             <!-- Mode Switcher -->
             <ul class="nav nav-pills nav-pills-glass nav-fill mb-3" role="tablist">
-              <li class="nav-item">
-                <button class="nav-link active" id="tab-mode-classic" type="button"><i class="bi bi-diagram-2 me-1"></i> Classic Linkage</button>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-mode-classic" type="button" role="tab" aria-selected="true" aria-controls="classic-params-panel"><i class="bi bi-diagram-2 me-1"></i> Classic Linkage</button>
               </li>
-              <li class="nav-item">
-                <button class="nav-link" id="tab-mode-semantic" type="button"><i class="bi bi-cpu me-1"></i> Semantic AI</button>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-mode-semantic" type="button" role="tab" aria-selected="false" aria-controls="semantic-params-panel"><i class="bi bi-cpu me-1"></i> Semantic AI</button>
               </li>
             </ul>
 
             <form id="cluster-form">
               <!-- Classic Mode Parameters -->
-              <div id="classic-params-panel">
+              <div id="classic-params-panel" role="tabpanel" aria-labelledby="tab-mode-classic">
                 <div class="mb-3">
                   <label class="form-label">Linkage Method</label>
                   <div class="custom-select-glass" id="linkage-select-wrapper" data-value="ward">
-                    <div class="custom-select-trigger" tabindex="0" role="listbox" aria-expanded="false">
+                    <div class="custom-select-trigger" tabindex="0" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="linkage-dropdown-list">
                       <span class="select-label">Ward (Variance Minimization)</span>
                       <i class="bi bi-chevron-down select-arrow"></i>
                     </div>
-                    <ul class="custom-select-dropdown" role="listbox">
-                      <li class="custom-select-option selected" data-value="ward">Ward (Variance Minimization)</li>
-                      <li class="custom-select-option" data-value="complete">Complete (Maximum Distance)</li>
-                      <li class="custom-select-option" data-value="average">Average (UPGMA)</li>
-                      <li class="custom-select-option" data-value="single">Single (Minimum Distance)</li>
+                    <ul class="custom-select-dropdown" id="linkage-dropdown-list" role="listbox">
+                      <li class="custom-select-option selected" data-value="ward" role="option" aria-selected="true">Ward (Variance Minimization)</li>
+                      <li class="custom-select-option" data-value="complete" role="option" aria-selected="false">Complete (Maximum Distance)</li>
+                      <li class="custom-select-option" data-value="average" role="option" aria-selected="false">Average (UPGMA)</li>
+                      <li class="custom-select-option" data-value="single" role="option" aria-selected="false">Single (Minimum Distance)</li>
                     </ul>
                   </div>
                   <div class="form-text small mt-1">
@@ -147,7 +147,7 @@
               </div>
 
               <!-- Semantic AI Mode Parameters -->
-              <div id="semantic-params-panel" class="d-none mb-3">
+              <div id="semantic-params-panel" class="d-none mb-3" role="tabpanel" aria-labelledby="tab-mode-semantic">
                 <div class="p-3 border rounded-2" style="border-color: var(--border-subtle) !important; background: var(--bg-raised);">
                   <div class="d-flex align-items-center mb-2">
                     <i class="bi bi-cpu me-2 fs-5" style="color: var(--text-secondary);"></i>
@@ -190,9 +190,9 @@
             <!-- Placeholder State -->
             <div id="results-placeholder" class="my-auto text-center py-5">
               <i class="bi bi-diagram-3 display-1" style="color: var(--text-disabled);"></i>
-              <h5 class="mt-3" style="color: var(--text-muted);">No results yet</h5>
-              <p class="small mx-auto" style="color: var(--text-muted); max-width: 320px;">
-                Upload at least 2 documents, choose your parameters, and click <strong>Run Clustering Pipeline</strong> to generate results.
+              <h5 class="mt-3" style="color: var(--text-secondary);">No results yet</h5>
+              <p class="small mx-auto" style="color: var(--text-muted); max-width: 360px;">
+                Upload at least two documents in step 1, select your clustering parameters in step 2, then run clustering to generate hierarchical tree visualizations and AI cluster summaries.
               </p>
             </div>
 
@@ -251,14 +251,14 @@
     </div>
 
     <div class="px-3 pt-3">
-      <label class="form-label small mb-1">Search Scope</label>
+      <label class="form-label small mb-1" id="chat-scope-label">Search Scope</label>
       <div class="custom-select-glass select-sm" id="chat-scope-wrapper" data-value="full">
-        <div class="custom-select-trigger" tabindex="0" role="listbox" aria-expanded="false">
+        <div class="custom-select-trigger" tabindex="0" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="chat-scope-dropdown" aria-labelledby="chat-scope-label">
           <span class="select-label">All Documents (Full Scope)</span>
           <i class="bi bi-chevron-down select-arrow"></i>
         </div>
-        <ul class="custom-select-dropdown" role="listbox">
-          <li class="custom-select-option selected" data-value="full">All Documents (Full Scope)</li>
+        <ul class="custom-select-dropdown" id="chat-scope-dropdown" role="listbox" aria-labelledby="chat-scope-label">
+          <li class="custom-select-option selected" data-value="full" role="option" aria-selected="true">All Documents (Full Scope)</li>
         </ul>
       </div>
     </div>

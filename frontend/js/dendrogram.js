@@ -51,7 +51,22 @@ function executeClustering() {
   }
 
   btnCluster.disabled = true;
-  btnCluster.innerHTML = `<span class="spinner-pulse me-2"></span> Computing Linkage...`;
+  btnCluster.innerHTML = `<span class="spinner-pulse me-2"></span> Computing linkage...`;
+
+  const placeholder = document.getElementById('results-placeholder');
+  const dendroCard = document.getElementById('dendrogram-card');
+  const dendroContainer = document.getElementById('dendrogram-container');
+  if (placeholder) placeholder.classList.add('d-none');
+  if (dendroCard) dendroCard.classList.remove('d-none');
+  if (dendroContainer) {
+    dendroContainer.innerHTML = `
+      <div class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 380px;">
+        <div class="spinner-pulse mb-3" style="width: 2rem; height: 2rem;"></div>
+        <p class="text-secondary fw-medium mb-1">Computing hierarchical clustering...</p>
+        <p class="text-muted small mb-0">Building distance matrix and cluster assignments</p>
+      </div>
+    `;
+  }
 
   fetch('/cluster', {
     method: 'POST',
@@ -70,12 +85,14 @@ function executeClustering() {
 
     if (status !== 200) {
       showAlert(body.error || 'Clustering failed', 'danger');
+      if (dendroContainer && dendroContainer.querySelector('.spinner-pulse')) {
+        if (dendroCard) dendroCard.classList.add('d-none');
+        if (placeholder) placeholder.classList.remove('d-none');
+      }
       return;
     }
 
     // Hide placeholder, show dendrogram & assignments cards
-    const placeholder = document.getElementById('results-placeholder');
-    const dendroCard = document.getElementById('dendrogram-card');
     const assignmentsCard = document.getElementById('assignments-card');
     const btnExport = document.getElementById('btn-export');
 
@@ -100,6 +117,10 @@ function executeClustering() {
     btnCluster.disabled = false;
     btnCluster.innerHTML = `<i class="bi bi-diagram-2 me-2"></i> Run Hierarchical Clustering`;
     showAlert(`Network error during clustering: ${err.message}`, 'danger');
+    if (dendroContainer && dendroContainer.querySelector('.spinner-pulse')) {
+      if (dendroCard) dendroCard.classList.add('d-none');
+      if (placeholder) placeholder.classList.remove('d-none');
+    }
   });
 }
 
@@ -170,52 +191,80 @@ function renderDendrogram(dendroData) {
     });
   }
 
-  // --- Step 5: Layout ---
+  // --- Step 5: Read CSS tokens for styling ---
+  const styles = getComputedStyle(document.documentElement);
+  const fontSans = styles.getPropertyValue('--font-sans').trim() || 'system-ui, sans-serif';
+  const fontMono = styles.getPropertyValue('--font-mono').trim() || 'monospace';
+  const textPrimary = styles.getPropertyValue('--text-primary').trim() || '#EDEDED';
+  const textSecondary = styles.getPropertyValue('--text-secondary').trim() || '#A0A6B2';
+  const textMuted = styles.getPropertyValue('--text-muted').trim() || '#808898';
+  const borderSubtle = styles.getPropertyValue('--border-subtle').trim() || '#262A32';
+  const bgRaised = styles.getPropertyValue('--bg-raised').trim() || '#1E2228';
+  const warnBorder = styles.getPropertyValue('--warn-border').trim() || '#C4841D';
+
+  // --- Step 6: Layout ---
   const layout = {
     title: {
       text: layoutData.title || 'Hierarchical Clustering Dendrogram',
-      font: { color: '#f8fafc', family: 'Outfit, sans-serif', size: 18 }
+      font: { color: textPrimary, family: fontSans, size: 16 }
     },
     xaxis: {
-      title: { text: 'Documents', font: { color: '#94a3b8' } },
+      title: { text: 'Documents', font: { color: textMuted, family: fontSans, size: 12 } },
       ticktext: shortLabels,
       tickvals: tickVals,
       tickangle: 0,
-      tickfont: { color: '#cbd5e1', size: 11, family: 'JetBrains Mono, monospace' },
-      gridcolor: 'rgba(255,255,255,0.05)',
-      zerolinecolor: 'rgba(255,255,255,0.1)'
+      tickfont: { color: textSecondary, size: 11, family: fontMono },
+      gridcolor: borderSubtle,
+      zerolinecolor: borderSubtle
     },
     yaxis: {
-      title: { text: 'Distance (Dissimilarity)', font: { color: '#94a3b8' } },
-      tickfont: { color: '#cbd5e1', size: 11, family: 'Outfit, sans-serif' },
-      gridcolor: 'rgba(255,255,255,0.05)',
-      zerolinecolor: 'rgba(255,255,255,0.1)'
+      title: { text: 'Distance (Dissimilarity)', font: { color: textMuted, family: fontSans, size: 12 } },
+      tickfont: { color: textSecondary, size: 11, family: fontSans },
+      gridcolor: borderSubtle,
+      zerolinecolor: borderSubtle
     },
     legend: {
-      font: { color: '#cbd5e1', family: 'Outfit, sans-serif', size: 12 },
-      bgcolor: 'rgba(15, 23, 42, 0.7)',
-      bordercolor: 'rgba(255,255,255,0.08)',
+      font: { color: textSecondary, family: fontSans, size: 12 },
+      bgcolor: bgRaised,
+      bordercolor: borderSubtle,
       borderwidth: 1
     },
     paper_bgcolor: 'rgba(0,0,0,0)',
-    plot_bgcolor: 'rgba(15,23,42,0.4)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
     margin: { l: 60, r: 40, t: 50, b: 60 },
     hovermode: 'closest',
     autosize: true
   };
 
-  // Add Cut Threshold Line if available
+  // Add Cut Threshold Line and annotation if available
   if (dendroData.color_threshold && dendroData.color_threshold > 0) {
+    const cutVal = Number(dendroData.color_threshold).toFixed(2);
+    const maxX = dendroData.labels ? dendroData.labels.length * 10 : 100;
     layout.shapes = [{
       type: 'line',
       x0: 0,
-      x1: (dendroData.labels ? dendroData.labels.length * 10 : 100),
+      x1: maxX,
       y0: dendroData.color_threshold,
       y1: dendroData.color_threshold,
       line: {
-        color: '#f59e0b',
+        color: warnBorder,
         width: 1.5,
         dash: 'dash'
+      }
+    }];
+    layout.annotations = [{
+      x: maxX,
+      y: dendroData.color_threshold,
+      xref: 'x',
+      yref: 'y',
+      text: `cut ${cutVal}`,
+      showarrow: false,
+      xanchor: 'right',
+      yanchor: 'bottom',
+      font: {
+        family: fontMono,
+        size: 11,
+        color: warnBorder
       }
     }];
   }

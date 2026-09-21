@@ -78,7 +78,9 @@ function setupEventListeners() {
     tabClassic.addEventListener('click', () => {
       currentRunMode = 'classic';
       tabClassic.classList.add('active');
+      tabClassic.setAttribute('aria-selected', 'true');
       tabSemantic.classList.remove('active');
+      tabSemantic.setAttribute('aria-selected', 'false');
       if (classicParams) classicParams.classList.remove('d-none');
       if (semanticParams) semanticParams.classList.add('d-none');
     });
@@ -86,7 +88,9 @@ function setupEventListeners() {
     tabSemantic.addEventListener('click', () => {
       currentRunMode = 'semantic';
       tabSemantic.classList.add('active');
+      tabSemantic.setAttribute('aria-selected', 'true');
       tabClassic.classList.remove('active');
+      tabClassic.setAttribute('aria-selected', 'false');
       if (semanticParams) semanticParams.classList.remove('d-none');
       if (classicParams) classicParams.classList.add('d-none');
     });
@@ -138,6 +142,22 @@ async function executeV2Clustering() {
     btnCluster.innerHTML = `<span class="spinner-pulse me-2"></span> Running ${currentRunMode} clustering...`;
   }
 
+  // Show loading skeleton in dendrogram container
+  const dendroContainer = document.getElementById('dendrogram-container');
+  const dendroCard = document.getElementById('dendrogram-card');
+  const placeholder = document.getElementById('results-placeholder');
+  if (placeholder) placeholder.classList.add('d-none');
+  if (dendroCard) dendroCard.classList.remove('d-none');
+  if (dendroContainer) {
+    dendroContainer.innerHTML = `
+      <div class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 380px;">
+        <div class="spinner-pulse mb-3" style="width: 2rem; height: 2rem;"></div>
+        <p class="text-secondary fw-medium mb-1">Computing ${currentRunMode} clustering...</p>
+        <p class="text-muted small mb-0">Building distance matrix and cluster assignments</p>
+      </div>
+    `;
+  }
+
   try {
     const res = await fetch(`/api/v2/runs/${currentRunId}/cluster`, {
       method: 'POST',
@@ -153,8 +173,6 @@ async function executeV2Clustering() {
     if (!res.ok) throw new Error(body.error || "Clustering failed");
 
     // Hide placeholder, show dendrogram & assignments
-    const placeholder = document.getElementById('results-placeholder');
-    const dendroCard = document.getElementById('dendrogram-card');
     const assignmentsCard = document.getElementById('assignments-card');
     const btnExport = document.getElementById('btn-export');
     const staleLabel = document.getElementById('stale-results-label');
@@ -188,10 +206,12 @@ async function executeV2Clustering() {
       showAlert(`Error during clustering: ${err.message}`, 'danger');
     }
 
-    // Show stale-results label if a previous dendrogram is visible
-    const dendroCard = document.getElementById('dendrogram-card');
+    // Handle error: if skeleton was left, revert to placeholder; otherwise show stale label
     const staleLabel = document.getElementById('stale-results-label');
-    if (dendroCard && !dendroCard.classList.contains('d-none') && staleLabel) {
+    if (dendroContainer && dendroContainer.querySelector('.spinner-pulse')) {
+      if (dendroCard) dendroCard.classList.add('d-none');
+      if (placeholder) placeholder.classList.remove('d-none');
+    } else if (dendroCard && !dendroCard.classList.contains('d-none') && staleLabel) {
       staleLabel.classList.remove('d-none');
     }
   } finally {

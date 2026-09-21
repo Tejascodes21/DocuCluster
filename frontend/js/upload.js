@@ -237,14 +237,20 @@ function showAlert(message, type = 'info') {
   };
   const icon = iconMap[type] || iconMap.info;
   const autoDismissMs = 5000;
+  const isDanger = type === 'danger';
 
   const toast = document.createElement('div');
   toast.className = `toast-glass toast-${type}`;
+  toast.setAttribute('role', isDanger ? 'alert' : 'status');
+  toast.setAttribute('aria-live', isDanger ? 'assertive' : 'polite');
+
+  const progressBarHtml = isDanger ? '' : `<div class="toast-progress" style="animation-duration: ${autoDismissMs}ms"></div>`;
+
   toast.innerHTML = `
     <i class="bi ${icon} toast-icon"></i>
     <span class="toast-body">${escapeHtml(message)}</span>
     <button type="button" class="toast-close" aria-label="Dismiss">&times;</button>
-    <div class="toast-progress" style="animation-duration: ${autoDismissMs}ms"></div>
+    ${progressBarHtml}
   `;
 
   // Dismiss handler
@@ -257,19 +263,21 @@ function showAlert(message, type = 'info') {
 
   toastContainer.appendChild(toast);
 
-  // Auto-dismiss
-  const timer = setTimeout(dismiss, autoDismissMs);
-  // Pause auto-dismiss on hover
-  toast.addEventListener('mouseenter', () => {
-    clearTimeout(timer);
-    const prog = toast.querySelector('.toast-progress');
-    if (prog) prog.style.animationPlayState = 'paused';
-  });
-  toast.addEventListener('mouseleave', () => {
-    const prog = toast.querySelector('.toast-progress');
-    if (prog) prog.style.animationPlayState = 'running';
-    setTimeout(dismiss, 2000);
-  });
+  // Auto-dismiss for non-danger toasts (danger toasts stay until manually dismissed)
+  if (!isDanger) {
+    let timer = setTimeout(dismiss, autoDismissMs);
+    // Pause auto-dismiss on hover
+    toast.addEventListener('mouseenter', () => {
+      clearTimeout(timer);
+      const prog = toast.querySelector('.toast-progress');
+      if (prog) prog.style.animationPlayState = 'paused';
+    });
+    toast.addEventListener('mouseleave', () => {
+      const prog = toast.querySelector('.toast-progress');
+      if (prog) prog.style.animationPlayState = 'running';
+      timer = setTimeout(dismiss, 2000);
+    });
+  }
 }
 
 function escapeHtml(str) {
@@ -293,6 +301,23 @@ function initCustomDropdowns() {
     const dropdown = wrapper.querySelector('.custom-select-dropdown');
     const options = wrapper.querySelectorAll('.custom-select-option');
     const labelSpan = trigger.querySelector('.select-label');
+
+    // Ensure ARIA attributes
+    if (trigger) {
+      trigger.setAttribute('role', 'combobox');
+      trigger.setAttribute('aria-haspopup', 'listbox');
+      trigger.setAttribute('aria-expanded', 'false');
+      if (dropdown && dropdown.id) {
+        trigger.setAttribute('aria-controls', dropdown.id);
+      }
+    }
+    if (dropdown) {
+      dropdown.setAttribute('role', 'listbox');
+    }
+    options.forEach(opt => {
+      opt.setAttribute('role', 'option');
+      opt.setAttribute('aria-selected', opt.classList.contains('selected') ? 'true' : 'false');
+    });
 
     // Toggle open/close on trigger click
     trigger.addEventListener('click', (e) => {
@@ -367,8 +392,13 @@ function initCustomDropdowns() {
 function selectDropdownOption(wrapper, opt) {
   const options = wrapper.querySelectorAll('.custom-select-option');
   const labelSpan = wrapper.querySelector('.select-label');
-  options.forEach(o => { o.classList.remove('selected'); o.classList.remove('focused'); });
+  options.forEach(o => {
+    o.classList.remove('selected');
+    o.classList.remove('focused');
+    o.setAttribute('aria-selected', 'false');
+  });
   opt.classList.add('selected');
+  opt.setAttribute('aria-selected', 'true');
   labelSpan.textContent = opt.textContent;
   wrapper.dataset.value = opt.dataset.value;
   // Fire change event on wrapper
@@ -398,7 +428,10 @@ function updateCustomDropdownOptions(wrapperId, optionsArray, selectedValue) {
 
   optionsArray.forEach(opt => {
     const li = document.createElement('li');
-    li.className = 'custom-select-option' + (opt.value === selectedValue ? ' selected' : '');
+    const isSel = opt.value === selectedValue;
+    li.className = 'custom-select-option' + (isSel ? ' selected' : '');
+    li.setAttribute('role', 'option');
+    li.setAttribute('aria-selected', isSel ? 'true' : 'false');
     li.dataset.value = opt.value;
     li.textContent = opt.label;
     li.addEventListener('click', (e) => {
@@ -407,7 +440,7 @@ function updateCustomDropdownOptions(wrapperId, optionsArray, selectedValue) {
       closeAllDropdowns();
     });
     dropdown.appendChild(li);
-    if (opt.value === selectedValue) {
+    if (isSel) {
       labelSpan.textContent = opt.label;
       wrapper.dataset.value = opt.value;
     }
