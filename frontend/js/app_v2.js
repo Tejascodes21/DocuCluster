@@ -248,25 +248,27 @@ async function fetchAndRenderClusterIntelligence() {
           if (c.cluster_id === 0 && !c.ai_summary) return;
 
           const kwPills = (c.keywords || []).map(k => `<span class="keyword-pill">#${escapeHtml(k)}</span>`).join('');
-          const badgeColor = c.cluster_id === 0 ? 'bg-secondary' : 'bg-primary';
+          const cColor = typeof clusterColor === 'function' ? clusterColor(c.cluster_id) : (c.cluster_id > 0 ? '#636EFA' : 'var(--text-muted)');
 
           let repDocHtml = '';
           if (c.representative_document) {
             repDocHtml = `
               <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 small">
-                <span class="badge bg-outline-info me-1 text-info border border-info"><i class="bi bi-star-fill me-1"></i> Core Document: ${escapeHtml(c.representative_document.filename)}</span>
-                <p class="text-dim mb-0 mt-1 fst-italic" style="font-size: 0.82rem;">"${escapeHtml(c.representative_document.snippet)}"</p>
+                <span class="rep-doc-badge me-1"><i class="bi bi-star-fill text-warning me-1"></i> Core Document: ${escapeHtml(c.representative_document.filename)}</span>
+                <p class="text-muted mb-0 mt-1 fst-italic" style="font-size: 0.82rem;">"${escapeHtml(c.representative_document.snippet)}"</p>
               </div>
             `;
           }
 
           const card = document.createElement('div');
           card.className = 'card-cluster-ai';
+          card.style.borderLeftColor = cColor;
           card.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
-              <div>
-                <span class="badge ${badgeColor} me-2">Cluster ${c.cluster_id}</span>
-                <span class="cluster-ai-title">${escapeHtml(c.label || `Cluster ${c.cluster_id}`)}</span>
+              <div class="d-flex align-items-center gap-2">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:${cColor}; flex-shrink:0;"></span>
+                <span class="cluster-ai-title mb-0">${escapeHtml(c.label || `Cluster ${c.cluster_id}`)}</span>
+                <span class="small text-muted font-monospace">(${c.cluster_id > 0 ? `Cluster ${c.cluster_id}` : 'Unassigned'})</span>
               </div>
             </div>
             <p class="cluster-ai-summary">${escapeHtml(c.ai_summary || "Group of documents sharing central key topics.")}</p>

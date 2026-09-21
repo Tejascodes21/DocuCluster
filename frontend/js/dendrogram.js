@@ -231,6 +231,15 @@ function renderDendrogram(dendroData) {
 }
 
 /**
+ * Return consistent cluster color by cluster ID (1-indexed).
+ * Returns 'var(--text-muted)' for noise / unassigned (<= 0).
+ */
+function clusterColor(id) {
+  return id > 0 ? CLUSTER_COLORS[(id - 1) % CLUSTER_COLORS.length] : 'var(--text-muted)';
+}
+window.clusterColor = clusterColor;
+
+/**
  * Render Cluster Assignment Table with unified color palette.
  * Badge colors match the dendrogram branch colors exactly.
  */
@@ -243,17 +252,25 @@ function renderAssignmentsTable(assignments) {
   assignments.sort((a, b) => a.cluster_id - b.cluster_id);
 
   assignments.forEach(item => {
-    const colorIdx = (item.cluster_id - 1) % CLUSTER_COLORS.length;
-    const bgColor = CLUSTER_COLORS[colorIdx];
-    const textColor = CLUSTER_TEXT_COLORS[colorIdx];
+    let bgColor, textColor, label;
+    if (item.cluster_id > 0) {
+      const colorIdx = (item.cluster_id - 1) % CLUSTER_COLORS.length;
+      bgColor = CLUSTER_COLORS[colorIdx];
+      textColor = CLUSTER_TEXT_COLORS[colorIdx];
+      label = `Cluster ${item.cluster_id}`;
+    } else {
+      bgColor = '#64748b';
+      textColor = '#94a3b8';
+      label = 'Unassigned';
+    }
     
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><code class="text-primary-light">#${item.doc_id}</code></td>
+      <td><span class="doc-id">#${item.doc_id}</span></td>
       <td class="fw-medium">${escapeHtml(item.filename)}</td>
       <td class="text-end">
         <span class="cluster-badge" style="background: ${hexToRgba(bgColor, 0.2)}; color: ${textColor}; border: 1px solid ${hexToRgba(bgColor, 0.4)};">
-          Cluster ${item.cluster_id}
+          ${label}
         </span>
       </td>
     `;
