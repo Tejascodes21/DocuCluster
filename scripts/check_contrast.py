@@ -66,6 +66,20 @@ COLORS = {
     'info-border':    '#406DA0',
 }
 
+# -- Cluster Colors (Graphical/Chart elements: must be >= 3:1 against surface) --
+CLUSTER_COLORS = [
+    ('cluster-1',  '#5B8DEF', 'Cluster 1 (Slate Blue) on surface'),
+    ('cluster-2',  '#E07A5F', 'Cluster 2 (Coral) on surface'),
+    ('cluster-3',  '#3DDC97', 'Cluster 3 (Mint) on surface'),
+    ('cluster-4',  '#A78BFA', 'Cluster 4 (Iris) on surface'),
+    ('cluster-5',  '#F4A261', 'Cluster 5 (Apricot) on surface'),
+    ('cluster-6',  '#2EC4B6', 'Cluster 6 (Teal) on surface'),
+    ('cluster-7',  '#F28482', 'Cluster 7 (Rose) on surface'),
+    ('cluster-8',  '#90BE6D', 'Cluster 8 (Sage) on surface'),
+    ('cluster-9',  '#E78EA9', 'Cluster 9 (Pink) on surface'),
+    ('cluster-10', '#E9C46A', 'Cluster 10 (Gold) on surface'),
+]
+
 # -- Text on Background Pairs (must be >= 4.5:1) --
 
 TEXT_PAIRS = [
@@ -123,6 +137,14 @@ def main():
         if not passed:
             all_pass = False
         results.append((context, fg_key, bg_key, '%.2f:1' % ratio, '3:1', 'PASS' if passed else 'FAIL'))
+
+    for label, hex_code, context in CLUSTER_COLORS:
+        bg = COLORS['bg-surface']
+        ratio = contrast_ratio(hex_code, bg)
+        passed = ratio >= 3.0
+        if not passed:
+            all_pass = False
+        results.append((context, label, 'bg-surface', '%.2f:1' % ratio, '3:1', 'PASS' if passed else 'FAIL'))
 
     # Print results table (ASCII only for Windows compatibility)
     print()

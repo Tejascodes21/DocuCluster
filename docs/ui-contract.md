@@ -161,9 +161,10 @@ div.custom-select-glass[data-value]     ← JS reads wrapper.dataset.value
 ---
 
 ## 8. Cluster Colors (Backend-Mirrored)
-
+ 
 `CLUSTER_COLORS` in `dendrogram.js` must keep the same hex values as the backend:
 ```js
-['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A',
- '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52']
+['#5B8DEF', '#E07A5F', '#3DDC97', '#A78BFA', '#F4A261',
+ '#2EC4B6', '#F28482', '#90BE6D', '#E78EA9', '#E9C46A']
 ```
+

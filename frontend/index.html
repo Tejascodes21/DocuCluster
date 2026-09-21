@@ -198,8 +198,18 @@
 
             <!-- Interactive Dendrogram Container -->
             <div id="dendrogram-card" class="d-none mb-4">
-              <div id="stale-results-label" class="d-none">
-                <span class="stale-results-label"><i class="bi bi-info-circle-fill"></i> Showing results from your last successful run</span>
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <div id="stale-results-label" class="d-none">
+                  <span class="stale-results-label"><i class="bi bi-info-circle-fill"></i> Showing results from your last successful run</span>
+                </div>
+                <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Dendrogram Orientation">
+                  <button type="button" class="btn btn-secondary-glass btn-sm active" id="btn-dendro-vert" title="Vertical Layout" aria-pressed="true">
+                    <i class="bi bi-bar-chart me-1"></i> Vertical
+                  </button>
+                  <button type="button" class="btn btn-secondary-glass btn-sm" id="btn-dendro-horiz" title="Horizontal Layout" aria-pressed="false">
+                    <i class="bi bi-bar-chart-steps me-1"></i> Horizontal
+                  </button>
+                </div>
               </div>
               <div id="dendrogram-container"></div>
             </div>
@@ -209,16 +219,33 @@
 
             <!-- Cluster Assignments Table -->
             <div id="assignments-card" class="d-none mt-auto">
-              <h6 class="fw-semibold mb-3">
-                <i class="bi bi-table me-2" style="color: var(--text-muted);"></i> Cluster Membership
-              </h6>
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h6 class="fw-semibold mb-0">
+                  <i class="bi bi-table me-2" style="color: var(--text-muted);"></i> Cluster Membership
+                </h6>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="input-group input-group-sm" style="width: 170px;">
+                    <span class="input-group-text bg-transparent border-end-0 text-muted" style="border-color: var(--border-control);"><i class="bi bi-search"></i></span>
+                    <input type="search" id="table-search-input" class="form-control form-control-sm border-start-0" placeholder="Filter docs..." aria-label="Filter documents by name or ID">
+                  </div>
+                  <select id="table-cluster-filter" class="form-select form-select-sm" style="width: 130px; background-color: var(--bg-canvas); color: var(--text-primary); border-color: var(--border-control);" aria-label="Filter by cluster">
+                    <option value="all">All Clusters</option>
+                  </select>
+                </div>
+              </div>
               <div class="table-responsive" style="max-height: 260px;">
                 <table class="table table-glass align-middle mb-0">
                   <thead>
                     <tr>
-                      <th scope="col">ID</th>
-                      <th scope="col">Document</th>
-                      <th scope="col" class="text-end">Cluster Assignment</th>
+                      <th scope="col" id="th-sort-id" role="button" tabindex="0" class="user-select-none" style="cursor: pointer;" aria-sort="ascending" title="Sort by ID">
+                        ID <i class="bi bi-arrow-up-short ms-1 text-muted sort-icon"></i>
+                      </th>
+                      <th scope="col" id="th-sort-name" role="button" tabindex="0" class="user-select-none" style="cursor: pointer;" aria-sort="none" title="Sort by Document Name">
+                        Document <i class="bi bi-chevron-expand ms-1 text-muted sort-icon"></i>
+                      </th>
+                      <th scope="col" id="th-sort-cluster" role="button" tabindex="0" class="text-end user-select-none" style="cursor: pointer;" aria-sort="none" title="Sort by Cluster">
+                        Cluster Assignment <i class="bi bi-chevron-expand ms-1 text-muted sort-icon"></i>
+                      </th>
                     </tr>
                   </thead>
                   <tbody id="assignments-table-body"></tbody>

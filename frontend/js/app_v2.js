@@ -268,7 +268,7 @@ async function fetchAndRenderClusterIntelligence() {
           if (c.cluster_id === 0 && !c.ai_summary) return;
 
           const kwPills = (c.keywords || []).map(k => `<span class="keyword-pill">#${escapeHtml(k)}</span>`).join('');
-          const cColor = typeof clusterColor === 'function' ? clusterColor(c.cluster_id) : (c.cluster_id > 0 ? '#636EFA' : 'var(--text-muted)');
+          const cColor = typeof clusterColor === 'function' ? clusterColor(c.cluster_id) : (c.cluster_id > 0 ? '#5B8DEF' : 'var(--text-muted)');
 
           let repDocHtml = '';
           if (c.representative_document) {
@@ -280,6 +280,11 @@ async function fetchAndRenderClusterIntelligence() {
             `;
           }
 
+          let displayLabel = (c.label || '').trim();
+          if (!displayLabel || displayLabel.toLowerCase() === 'untitled' || displayLabel.toLowerCase().startsWith('theme: untitled') || displayLabel.toLowerCase() === 'document') {
+            displayLabel = c.cluster_id > 0 ? `Cluster ${c.cluster_id}` : 'Unassigned';
+          }
+
           const card = document.createElement('div');
           card.className = 'card-cluster-ai';
           card.style.borderLeftColor = cColor;
@@ -287,7 +292,7 @@ async function fetchAndRenderClusterIntelligence() {
             <div class="d-flex justify-content-between align-items-start mb-2">
               <div class="d-flex align-items-center gap-2">
                 <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:${cColor}; flex-shrink:0;"></span>
-                <span class="cluster-ai-title mb-0">${escapeHtml(c.label || `Cluster ${c.cluster_id}`)}</span>
+                <span class="cluster-ai-title mb-0">${escapeHtml(displayLabel)}</span>
                 <span class="small text-muted font-monospace">(${c.cluster_id > 0 ? `Cluster ${c.cluster_id}` : 'Unassigned'})</span>
               </div>
             </div>

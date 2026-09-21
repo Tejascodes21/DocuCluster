@@ -78,6 +78,43 @@ def detect_near_duplicates(
     return duplicates
 
 
+# Stop-list for generic, uninformative or junk cluster themes and stopwords
+JUNK_THEME_STOPLIST = {
+    "untitled", "untitled document", "untitled doc", "new document",
+    "document", "documents", "unknown", "general", "general topics",
+    "theme: untitled", "theme: general topics", "file", "files",
+    "text", "content", "page", "section", "draft", "none", "null", "nan"
+}
+
+
+def filter_junk_keywords(keywords: List[str]) -> List[str]:
+    """Filter out boilerplate/junk tokens from cluster keywords."""
+    if not keywords:
+        return []
+    cleaned = []
+    for k in keywords:
+        if not k:
+            continue
+        tok = k.strip().lower()
+        if tok not in JUNK_THEME_STOPLIST and not tok.startswith('untitled'):
+            cleaned.append(k)
+    return cleaned
+
+
+def is_junk_theme(name: Optional[str]) -> bool:
+    """Check if a generated cluster theme or title is generic or junk."""
+    if not name:
+        return True
+    cleaned = name.strip().lower()
+    if cleaned in JUNK_THEME_STOPLIST:
+        return True
+    if cleaned.startswith("untitled") or cleaned.startswith("theme: untitled"):
+        return True
+    if cleaned in {"document", "documents", "cluster", "group", "text", "file"}:
+        return True
+    return False
+
+
 def summarize_cluster_with_gemini(
     cluster_label: int,
     keywords: List[str],
@@ -86,6 +123,8 @@ def summarize_cluster_with_gemini(
     api_key: Optional[str] = None
 ) -> Dict[str, str]:
     """Generate cluster name and 2-3 sentence summary via Gemini API or fallback.
+
+    Applies stop-list filtering to avoid junk names like "Untitled".
 
     Args:
         cluster_label: Cluster integer ID.
@@ -98,6 +137,7 @@ def summarize_cluster_with_gemini(
         Dict with keys "name" and "summary".
     """
     gemini_key = api_key or os.getenv('GEMINI_API_KEY')
+    clean_kws = filter_junk_keywords(keywords)
 
     # Try Gemini API if key is available
     if gemini_key:
@@ -105,13 +145,14 @@ def summarize_cluster_with_gemini(
             from google import genai
             client = genai.Client(api_key=gemini_key)
             
+            prompt_kws = clean_kws if clean_kws else keywords
             prompt = (
                 f"You are an expert document taxonomy analyst.\n"
                 f"Analyze this document cluster containing {doc_count} documents:\n"
-                f"- Top Keywords: {', '.join(keywords[:8])}\n"
+                f"- Top Keywords: {', '.join(prompt_kws[:8])}\n"
                 f"- Sample Text excerpt: {rep_doc.content[:500]}\n\n"
                 f"Provide a concise JSON response with:\n"
-                f"1. 'name': A professional 2-4 word title for this cluster.\n"
+                f"1. 'name': A professional 2-4 word title for this cluster (avoid generic words like 'Untitled' or 'Document').\n"
                 f"2. 'summary': A 2-3 sentence high-level summary of the cluster contents.\n"
                 f"Format as strict JSON: {{\x22name\x22: \x22...\x22, \x22summary\x22: \x22...\x22}}"
             )
@@ -129,21 +170,33 @@ def summarize_cluster_with_gemini(
                 raw_text = raw_text.split('\n', 1)[-1].rsplit('```', 1)[0].strip()
 
             data = json.loads(raw_text)
-            logger.info("Generated Gemini AI summary for Cluster %d: '%s'", cluster_label, data.get('name'))
+            ai_name = data.get('name', '').strip()
+
+            # Sanitize against junk/untitled titles
+            if is_junk_theme(ai_name):
+                if clean_kws:
+                    ai_name = f"Theme: {', '.join([k.capitalize() for k in clean_kws[:3]])}"
+                else:
+                    ai_name = f"Cluster {cluster_label}"
+
+            logger.info("Generated Gemini AI summary for Cluster %d: '%s'", cluster_label, ai_name)
+            summary_kws = clean_kws if clean_kws else keywords
             return {
-                "name": data.get('name', f"Cluster {cluster_label}"),
-                "summary": data.get('summary', f"Group of {doc_count} documents focused on {', '.join(keywords[:3])}.")
+                "name": ai_name,
+                "summary": data.get('summary', f"Group of {doc_count} documents focused on {', '.join(summary_kws[:3])}.")
             }
         except Exception as e:
             logger.warning("Gemini API call failed for Cluster %d: %s. Using fallback.", cluster_label, e)
 
     # --- Fallback Generator (No API key or Offline) ---
-    top_kw_str = ", ".join([k.capitalize() for k in keywords[:3]]) if keywords else "General Topics"
-    fallback_name = f"Theme: {top_kw_str}" if keywords else f"Cluster {cluster_label}"
+    effective_kws = clean_kws if clean_kws else [k for k in keywords if not is_junk_theme(k)]
+    top_kw_str = ", ".join([k.capitalize() for k in effective_kws[:3]]) if effective_kws else ""
+    fallback_name = f"Theme: {top_kw_str}" if top_kw_str else f"Cluster {cluster_label}"
     
     excerpt = rep_doc.content[:180].strip() + ("..." if len(rep_doc.content) > 180 else "")
+    topic_desc = top_kw_str.lower() if top_kw_str else "shared topical themes"
     fallback_summary = (
-        f"This cluster contains {doc_count} document(s) centered around {top_kw_str.lower()}. "
+        f"This cluster contains {doc_count} document(s) centered around {topic_desc}. "
         f"Representative excerpt from '{rep_doc.filename}': \"{excerpt}\""
     )
 
