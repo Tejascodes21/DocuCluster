@@ -32,9 +32,10 @@ logger = get_logger(__name__)
 
 # Plotly-compatible default color palette for cluster branches
 CLUSTER_COLORS = [
-    '#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A',
-    '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52'
+    '#5B8DEF', '#E07A5F', '#3DDC97', '#A78BFA', '#F4A261',
+    '#2EC4B6', '#F28482', '#90BE6D', '#E78EA9', '#E9C46A'
 ]
+
 
 
 def compute_auto_n_clusters(doc_count: int) -> int:
@@ -176,14 +177,14 @@ def build_dendrogram_payload(
     # Build Plotly traces — one line per merge
     traces = []
     for i, (ic, dc) in enumerate(zip(icoord, dcoord)):
-        color = color_list[i] if i < len(color_list) else '#636EFA'
+        color = color_list[i] if i < len(color_list) else CLUSTER_COLORS[0]
         # Map scipy default colors to our palette
         if color.startswith('C'):
             try:
                 idx = int(color[1:]) % len(CLUSTER_COLORS)
                 color = CLUSTER_COLORS[idx]
             except (ValueError, IndexError):
-                color = '#636EFA'
+                color = CLUSTER_COLORS[0]
 
         traces.append({
             'x': list(ic),

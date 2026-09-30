@@ -26,8 +26,8 @@ logger = get_logger(__name__)
 
 # Plotly color palette
 CLUSTER_COLORS = [
-    '#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A',
-    '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52'
+    '#5B8DEF', '#E07A5F', '#3DDC97', '#A78BFA', '#F4A261',
+    '#2EC4B6', '#F28482', '#90BE6D', '#E78EA9', '#E9C46A'
 ]
 
 # Default lightweight model — downloads ~80MB on first run
@@ -202,8 +202,14 @@ def compute_ctfidf(
     ordered_labels = sorted(cluster_texts.keys())
     corpus = [cluster_texts[lbl] for lbl in ordered_labels]
 
-    # Count vectorization
-    count_vectorizer = CountVectorizer(stop_words='english', max_features=5000)
+    # Count vectorization with extended stop words (filters document boilerplate like 'untitled', 'page', etc.)
+    from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+    extended_stop_words = list(ENGLISH_STOP_WORDS.union({
+        'untitled', 'document', 'documents', 'docx', 'pdf', 'txt',
+        'page', 'pages', 'section', 'sections', 'file', 'files',
+        'chapter', 'author', 'date', 'version', 'table', 'figure', 'text'
+    }))
+    count_vectorizer = CountVectorizer(stop_words=extended_stop_words, max_features=5000)
     count_matrix = count_vectorizer.fit_transform(corpus)
 
     # TF-IDF transformation on cluster-level documents
@@ -269,13 +275,13 @@ def build_semantic_dendrogram(
 
     traces = []
     for i, (ic, dc) in enumerate(zip(icoord, dcoord)):
-        color = color_list[i] if i < len(color_list) else '#636EFA'
+        color = color_list[i] if i < len(color_list) else CLUSTER_COLORS[0]
         if color.startswith('C'):
             try:
                 idx = int(color[1:]) % len(CLUSTER_COLORS)
                 color = CLUSTER_COLORS[idx]
             except (ValueError, IndexError):
-                color = '#636EFA'
+                color = CLUSTER_COLORS[0]
 
         traces.append({
             'x': list(ic),

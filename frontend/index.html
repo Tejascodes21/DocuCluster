@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuCluster AI — Hierarchical & Semantic Document Intelligence</title>
+  <meta name="description" content="Upload text and PDF documents, perform hierarchical & semantic clustering with UMAP and HDBSCAN, view Plotly dendrograms, generate AI cluster summaries, and query documents with hybrid RAG chat.">
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Custom Glassmorphism CSS -->
+  <link href="css/styles.css" rel="stylesheet">
+  <!-- Plotly.js -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg navbar-glass sticky-top py-3">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <i class="bi bi-diagram-3-fill text-primary fs-3"></i>
+        <span class="brand-badge">DocuCluster AI</span>
+      </a>
+      
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <span id="run-session-badge" class="badge bg-dark border border-secondary text-muted px-3 py-2 rounded-pill d-none d-md-inline-flex align-items-center gap-1 run-badge-active">
+          <i class="bi bi-lightning-charge-fill" style="font-size:0.7rem"></i>
+          <span id="run-badge-text">Active Run</span>
+        </span>
+        <button type="button" class="btn btn-secondary-glass btn-sm" data-bs-toggle="offcanvas" data-bs-target="#offcanvasRuns" id="btn-run-history">
+          <i class="bi bi-clock-history me-1"></i> My Runs
+        </button>
+        <button type="button" class="btn btn-primary-gradient btn-sm" data-bs-toggle="offcanvas" data-bs-target="#offcanvasChat">
+          <i class="bi bi-chat-left-text-fill me-1"></i> Ask AI
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Header -->
+  <header class="hero-header container">
+    <h1 class="hero-title">
+      Document Intelligence & <span class="text-gradient">Clustering Suite</span>
+    </h1>
+    <p class="hero-subtitle">
+      Upload multi-format document collections, choose between Classic Hierarchical or Semantic AI clustering, explore interactive dendrograms & AI summaries, and ask natural language questions with RAG citations.
+    </p>
+  </header>
+
+  <main class="container my-4">
+
+    <!-- Global Alert Container -->
+    <!-- Toast container (fixed position, no page dimming) -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <div class="row g-4">
+      
+      <!-- Left Column: Step 1 (Upload) & Step 2 (Clustering Parameters) -->
+      <div class="col-lg-5">
+        
+        <!-- Step 1: Upload Documents -->
+        <div class="card card-glass mb-4">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="badge bg-primary rounded-circle p-2 me-2 fs-6" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">1</span>
+              <h5 class="card-title mb-0">Upload Documents</h5>
+            </div>
+            
+            <div id="dropzone" class="dropzone mb-3">
+              <i class="bi bi-cloud-arrow-up dropzone-icon"></i>
+              <h6 class="fw-semibold mb-1">Drag & Drop files here</h6>
+              <p class="text-muted small mb-2">Supports .txt and .pdf (Max 5MB each)</p>
+              <button type="button" class="btn btn-secondary-glass btn-sm" id="btn-browse">
+                <i class="bi bi-folder2-open me-1"></i> Browse Files
+              </button>
+              <input type="file" id="file-input" multiple accept=".txt,.pdf" class="d-none">
+            </div>
+
+            <!-- Selected File List -->
+            <div id="file-list-container" class="d-none mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-medium">Selected Files (<span id="selected-count">0</span>)</span>
+                <button type="button" class="btn btn-link text-danger p-0 small text-decoration-none" id="btn-clear-files">
+                  <i class="bi bi-trash me-1"></i> Clear All
+                </button>
+              </div>
+              <div id="file-list" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+
+            <button type="button" id="btn-upload" class="btn btn-primary-gradient w-100" disabled>
+              <i class="bi bi-upload me-2"></i> Process & Ingest Files
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Clustering Parameters -->
+        <div class="card card-glass">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="badge bg-primary rounded-circle p-2 me-2 fs-6" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">2</span>
+              <h5 class="card-title mb-0">Clustering Parameters</h5>
+            </div>
+
+            <!-- Mode Switcher Nav Pills -->
+            <ul class="nav nav-pills nav-pills-glass nav-fill mb-3" role="tablist">
+              <li class="nav-item">
+                <button class="nav-link active" id="tab-mode-classic" type="button"><i class="bi bi-diagram-2 me-1"></i> Classic Linkage</button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" id="tab-mode-semantic" type="button"><i class="bi bi-cpu me-1"></i> Semantic AI</button>
+              </li>
+            </ul>
+
+            <form id="cluster-form">
+              <!-- Classic Mode Parameters Panel -->
+              <div id="classic-params-panel">
+                <div class="mb-3">
+                  <label class="form-label">Linkage Method</label>
+                  <div class="custom-select-glass" id="linkage-select-wrapper" data-value="ward">
+                    <div class="custom-select-trigger" tabindex="0" role="listbox" aria-expanded="false">
+                      <span class="select-label">Ward (Variance Minimization)</span>
+                      <i class="bi bi-chevron-down select-arrow"></i>
+                    </div>
+                    <ul class="custom-select-dropdown" role="listbox">
+                      <li class="custom-select-option selected" data-value="ward">Ward (Variance Minimization)</li>
+                      <li class="custom-select-option" data-value="complete">Complete (Maximum Distance)</li>
+                      <li class="custom-select-option" data-value="average">Average (UPGMA)</li>
+                      <li class="custom-select-option" data-value="single">Single (Minimum Distance)</li>
+                    </ul>
+                  </div>
+                  <div class="form-text text-muted small mt-1">
+                    Ward minimizes variance within merged clusters (scipy hierarchy).
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Cluster Count (k)</label>
+                  <div class="input-group">
+                    <div class="input-group-text bg-dark border-secondary text-muted">
+                      <input class="form-check-input mt-0" type="checkbox" id="auto-cluster-toggle" checked>
+                      <label class="form-check-label ms-2 small" for="auto-cluster-toggle">Auto</label>
+                    </div>
+                    <input type="number" id="n-clusters-input" class="form-control form-control-glass" placeholder="Auto-determined" min="2" disabled>
+                  </div>
+                  <div class="form-text text-muted small mt-1">
+                    Auto mode uses formula: max(2, min(n, round(&radic;n))).
+                  </div>
+                </div>
+              </div>
+
+              <!-- Semantic AI Mode Parameters Panel -->
+              <div id="semantic-params-panel" class="d-none mb-3">
+                <div class="p-3 border border-secondary rounded-3 bg-dark bg-opacity-50">
+                  <div class="d-flex align-items-center mb-2 text-info">
+                    <i class="bi bi-stars me-2 fs-5"></i>
+                    <h6 class="mb-0 fw-semibold">Semantic Pipeline Overview</h6>
+                  </div>
+                  <p class="text-muted small mb-0">
+                    Uses dense TF-IDF embeddings &rarr; UMAP dimensionality reduction &rarr; HDBSCAN density clustering &rarr; c-TF-IDF keyword extraction. Automatically detects outlier documents.
+                  </p>
+                </div>
+              </div>
+
+              <button type="submit" id="btn-cluster" class="btn btn-primary-gradient w-100" disabled>
+                <i class="bi bi-diagram-2 me-2"></i> Run Clustering Pipeline
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Step 3 (Results & Interactive Dendrogram) -->
+      <div class="col-lg-7">
+        
+        <div class="card card-glass h-100">
+          <div class="card-body p-4 d-flex flex-column">
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div class="d-flex align-items-center">
+                <span class="badge bg-primary rounded-circle p-2 me-2 fs-6" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">3</span>
+                <h5 class="card-title mb-0">Dendrogram & AI Cluster Intelligence</h5>
+              </div>
+              <a id="btn-export" href="/export" class="btn btn-secondary-glass btn-sm disabled" download="cluster_assignments.csv">
+                <i class="bi bi-download me-1"></i> Export CSV
+              </a>
+            </div>
+
+            <!-- Near-Duplicates Container -->
+            <div id="near-duplicates-container"></div>
+
+            <!-- Placeholder State when no clustering results yet -->
+            <div id="results-placeholder" class="my-auto text-center py-5">
+              <i class="bi bi-diagram-3 text-secondary display-1 opacity-25"></i>
+              <h5 class="mt-3 text-muted">No Clustering Results Yet</h5>
+              <p class="text-dim small max-w-sm mx-auto">
+                Upload at least 2 documents on the left, choose your parameters, and click <strong>Run Clustering Pipeline</strong> to generate dendrogram & AI insights.
+              </p>
+            </div>
+
+            <!-- Interactive Dendrogram Container -->
+            <div id="dendrogram-card" class="d-none mb-4">
+              <div id="stale-results-label" class="d-none">
+                <span class="stale-results-label"><i class="bi bi-info-circle-fill"></i> Showing results from your last successful run</span>
+              </div>
+              <div id="dendrogram-container"></div>
+            </div>
+
+            <!-- AI Cluster Intelligence Cards -->
+            <div id="ai-clusters-container" class="mb-4"></div>
+
+            <!-- Cluster Assignments Table -->
+            <div id="assignments-card" class="d-none mt-auto">
+              <h6 class="fw-semibold mb-3">
+                <i class="bi bi-table me-2 text-primary"></i> Cluster Membership Summary
+              </h6>
+              <div class="table-responsive" style="max-height: 260px;">
+                <table class="table table-glass align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th scope="col">ID</th>
+                      <th scope="col">Document</th>
+                      <th scope="col" class="text-end">Cluster Assignment</th>
+                    </tr>
+                  </thead>
+                  <tbody id="assignments-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Floating Action Button for RAG Chat -->
+  <button class="fab-chat" data-bs-toggle="offcanvas" data-bs-target="#offcanvasChat" title="Open AI Document Chat">
+    <i class="bi bi-chat-dots-fill"></i>
+  </button>
+
+  <!-- Offcanvas Drawer 1: RAG Document Chat Assistant -->
+  <div class="offcanvas offcanvas-end offcanvas-glass" tabindex="-1" id="offcanvasChat" style="width: 440px;">
+    <div class="offcanvas-header">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-robot text-primary fs-4"></i>
+        <h5 class="offcanvas-title mb-0">Cluster-Aware Document Chat</h5>
+      </div>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+
+    <div class="px-3 pt-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <label class="form-label small text-muted mb-0">Search Scope</label>
+        <label class="chat-debug-switch" title="Toggle debug inspection panel">
+          <input type="checkbox" id="chat-debug-toggle">
+          <span>Debug</span>
+        </label>
+      </div>
+      <div class="custom-select-glass select-sm" id="chat-scope-wrapper" data-value="full">
+        <div class="custom-select-trigger" tabindex="0" role="listbox" aria-expanded="false">
+          <span class="select-label">All Documents (Full Scope)</span>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+        <ul class="custom-select-dropdown" role="listbox">
+          <li class="custom-select-option selected" data-value="full">All Documents (Full Scope)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="offcanvas-body chat-body" id="chat-messages-container">
+      <div class="chat-bubble chat-bubble-bot">
+        Hello! Ask any question about your uploaded document collection. I use BM25 + Dense embeddings with RRF reranking to provide precise answers with citations.
+      </div>
+    </div>
+
+    <div class="offcanvas-footer">
+      <form id="chat-form" class="input-group">
+        <input type="text" id="chat-input" class="form-control form-control-glass" placeholder="Ask a question about your docs..." required>
+        <button type="submit" class="btn btn-primary-gradient">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Offcanvas Drawer 2: My Runs History -->
+  <div class="offcanvas offcanvas-start offcanvas-glass" tabindex="-1" id="offcanvasRuns" style="width: 380px;">
+    <div class="offcanvas-header">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-clock-history text-primary fs-4"></i>
+        <h5 class="offcanvas-title mb-0">My Persistent Runs</h5>
+      </div>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+
+    <div class="offcanvas-body">
+      <button type="button" class="btn btn-primary-gradient w-100 mb-3" id="btn-create-new-run">
+        <i class="bi bi-plus-lg me-1"></i> Start New Run Session
+      </button>
+
+      <div id="runs-list-container">
+        <!-- Rendered dynamically by app_v2.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Frontend Scripts -->
+  <script src="js/app_v2.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/dendrogram.js"></script>
+  <script src="js/export.js"></script>
+
+</body>
+</html>
+
