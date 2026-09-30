@@ -78,9 +78,7 @@ function setupEventListeners() {
     tabClassic.addEventListener('click', () => {
       currentRunMode = 'classic';
       tabClassic.classList.add('active');
-      tabClassic.setAttribute('aria-selected', 'true');
       tabSemantic.classList.remove('active');
-      tabSemantic.setAttribute('aria-selected', 'false');
       if (classicParams) classicParams.classList.remove('d-none');
       if (semanticParams) semanticParams.classList.add('d-none');
     });
@@ -88,9 +86,7 @@ function setupEventListeners() {
     tabSemantic.addEventListener('click', () => {
       currentRunMode = 'semantic';
       tabSemantic.classList.add('active');
-      tabSemantic.setAttribute('aria-selected', 'true');
       tabClassic.classList.remove('active');
-      tabClassic.setAttribute('aria-selected', 'false');
       if (semanticParams) semanticParams.classList.remove('d-none');
       if (classicParams) classicParams.classList.add('d-none');
     });
@@ -139,23 +135,7 @@ async function executeV2Clustering() {
 
   if (btnCluster) {
     btnCluster.disabled = true;
-    btnCluster.innerHTML = `<span class="spinner-pulse me-2"></span> Running ${currentRunMode} clustering...`;
-  }
-
-  // Show loading skeleton in dendrogram container
-  const dendroContainer = document.getElementById('dendrogram-container');
-  const dendroCard = document.getElementById('dendrogram-card');
-  const placeholder = document.getElementById('results-placeholder');
-  if (placeholder) placeholder.classList.add('d-none');
-  if (dendroCard) dendroCard.classList.remove('d-none');
-  if (dendroContainer) {
-    dendroContainer.innerHTML = `
-      <div class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 380px;">
-        <div class="spinner-pulse mb-3" style="width: 2rem; height: 2rem;"></div>
-        <p class="text-secondary fw-medium mb-1">Computing ${currentRunMode} clustering...</p>
-        <p class="text-muted small mb-0">Building distance matrix and cluster assignments</p>
-      </div>
-    `;
+    btnCluster.innerHTML = `<span class="spinner-pulse me-2"></span> Running ${currentRunMode.toUpperCase()} Pipeline...`;
   }
 
   try {
@@ -173,6 +153,8 @@ async function executeV2Clustering() {
     if (!res.ok) throw new Error(body.error || "Clustering failed");
 
     // Hide placeholder, show dendrogram & assignments
+    const placeholder = document.getElementById('results-placeholder');
+    const dendroCard = document.getElementById('dendrogram-card');
     const assignmentsCard = document.getElementById('assignments-card');
     const btnExport = document.getElementById('btn-export');
     const staleLabel = document.getElementById('stale-results-label');
@@ -198,7 +180,7 @@ async function executeV2Clustering() {
     await fetchAndRenderClusterIntelligence();
 
     if (typeof showAlert === 'function') {
-      showAlert(`Clustering complete (${currentRunMode} mode).`, 'success');
+      showAlert(`Clustering complete (${currentRunMode.toUpperCase()} mode)!`, 'success');
     }
 
   } catch (err) {
@@ -206,18 +188,16 @@ async function executeV2Clustering() {
       showAlert(`Error during clustering: ${err.message}`, 'danger');
     }
 
-    // Handle error: if skeleton was left, revert to placeholder; otherwise show stale label
+    // Show stale-results label if a previous dendrogram is visible
+    const dendroCard = document.getElementById('dendrogram-card');
     const staleLabel = document.getElementById('stale-results-label');
-    if (dendroContainer && dendroContainer.querySelector('.spinner-pulse')) {
-      if (dendroCard) dendroCard.classList.add('d-none');
-      if (placeholder) placeholder.classList.remove('d-none');
-    } else if (dendroCard && !dendroCard.classList.contains('d-none') && staleLabel) {
+    if (dendroCard && !dendroCard.classList.contains('d-none') && staleLabel) {
       staleLabel.classList.remove('d-none');
     }
   } finally {
     if (btnCluster) {
       btnCluster.disabled = false;
-      btnCluster.innerHTML = `<i class="bi bi-diagram-2 me-2"></i> Run ${currentRunMode} clustering`;
+      btnCluster.innerHTML = `<i class="bi bi-diagram-2 me-2"></i> Run ${currentRunMode.toUpperCase()} Clustering`;
     }
   }
 }
@@ -268,32 +248,25 @@ async function fetchAndRenderClusterIntelligence() {
           if (c.cluster_id === 0 && !c.ai_summary) return;
 
           const kwPills = (c.keywords || []).map(k => `<span class="keyword-pill">#${escapeHtml(k)}</span>`).join('');
-          const cColor = typeof clusterColor === 'function' ? clusterColor(c.cluster_id) : (c.cluster_id > 0 ? '#5B8DEF' : 'var(--text-muted)');
+          const badgeColor = c.cluster_id === 0 ? 'bg-secondary' : 'bg-primary';
 
           let repDocHtml = '';
           if (c.representative_document) {
             repDocHtml = `
               <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 small">
-                <span class="rep-doc-badge me-1"><i class="bi bi-star-fill text-warning me-1"></i> Core Document: ${escapeHtml(c.representative_document.filename)}</span>
-                <p class="text-muted mb-0 mt-1 fst-italic" style="font-size: 0.82rem;">"${escapeHtml(c.representative_document.snippet)}"</p>
+                <span class="badge bg-outline-info me-1 text-info border border-info"><i class="bi bi-star-fill me-1"></i> Core Document: ${escapeHtml(c.representative_document.filename)}</span>
+                <p class="text-dim mb-0 mt-1 fst-italic" style="font-size: 0.82rem;">"${escapeHtml(c.representative_document.snippet)}"</p>
               </div>
             `;
           }
 
-          let displayLabel = (c.label || '').trim();
-          if (!displayLabel || displayLabel.toLowerCase() === 'untitled' || displayLabel.toLowerCase().startsWith('theme: untitled') || displayLabel.toLowerCase() === 'document') {
-            displayLabel = c.cluster_id > 0 ? `Cluster ${c.cluster_id}` : 'Unassigned';
-          }
-
           const card = document.createElement('div');
           card.className = 'card-cluster-ai';
-          card.style.borderLeftColor = cColor;
           card.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
-              <div class="d-flex align-items-center gap-2">
-                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:${cColor}; flex-shrink:0;"></span>
-                <span class="cluster-ai-title mb-0">${escapeHtml(displayLabel)}</span>
-                <span class="small text-muted font-monospace">(${c.cluster_id > 0 ? `Cluster ${c.cluster_id}` : 'Unassigned'})</span>
+              <div>
+                <span class="badge ${badgeColor} me-2">Cluster ${c.cluster_id}</span>
+                <span class="cluster-ai-title">${escapeHtml(c.label || `Cluster ${c.cluster_id}`)}</span>
               </div>
             </div>
             <p class="cluster-ai-summary">${escapeHtml(c.ai_summary || "Group of documents sharing central key topics.")}</p>
@@ -328,11 +301,13 @@ async function sendChatQuery() {
   const chatInput = document.getElementById('chat-input');
   const chatScopeWrapper = document.getElementById('chat-scope-wrapper');
   const chatMessages = document.getElementById('chat-messages-container');
+  const debugToggle = document.getElementById('chat-debug-toggle');
 
   if (!chatInput || !chatInput.value.trim() || !currentRunId) return;
 
   const queryText = chatInput.value.trim();
   const scopeVal = chatScopeWrapper ? chatScopeWrapper.dataset.value : 'full';
+  const debugEnabled = debugToggle ? debugToggle.checked : false;
   chatInput.value = '';
 
   // Append User Bubble
@@ -349,7 +324,8 @@ async function sendChatQuery() {
         query: queryText,
         scope: scopeVal,
         top_k: 5,
-        use_reranker: true
+        use_reranker: true,
+        debug: debugEnabled
       })
     });
 
@@ -358,8 +334,8 @@ async function sendChatQuery() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Chat request failed");
 
-    // Render Bot Response with Citations & Stats
-    appendBotChatMessage(data.answer, data.citations, data.retrieval_stats);
+    // Render Bot Response with Citations, Sources & optional Debug panel
+    appendBotChatMessage(data.answer, data.citations, data, debugEnabled);
 
   } catch (err) {
     removeTypingIndicator(typingId);
@@ -378,29 +354,247 @@ function appendChatMessage(text, sender) {
   container.scrollTop = container.scrollHeight;
 }
 
-function appendBotChatMessage(answer, citations = [], stats = {}) {
+/**
+ * Render markdown-like answer text to HTML.
+ * Supports: **bold**, *italic*, headers (##), bullet lists, numbered lists,
+ * comparison tables (| col | col |), and inline [n] citation markers.
+ */
+function renderAnswerMarkdown(text, citations) {
+  if (!text) return '';
+  let html = escapeHtml(text);
+
+  // Headers: ## Header -> <h4>
+  html = html.replace(/^### (.+)$/gm, '<h5 class="answer-heading mt-3 mb-1">$1</h5>');
+  html = html.replace(/^## (.+)$/gm, '<h4 class="answer-heading mt-3 mb-1">$1</h4>');
+
+  // Bold: **text**
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic: *text*
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Detect comparison table blocks (lines starting with |)
+  html = html.replace(/((?:^\|.+\|$\n?)+)/gm, (tableBlock) => {
+    const rows = tableBlock.trim().split('\n').filter(r => r.trim());
+    if (rows.length < 2) return tableBlock;
+    let tableHtml = '<div class="answer-table-wrapper mt-2 mb-2"><table class="answer-comparison-table">';
+    rows.forEach((row, ri) => {
+      // Skip separator rows (|---|---|)
+      if (/^\|[\s\-:]+\|/.test(row)) return;
+      const cells = row.split('|').filter(c => c.trim() !== '');
+      const tag = ri === 0 ? 'th' : 'td';
+      tableHtml += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+    });
+    tableHtml += '</table></div>';
+    return tableHtml;
+  });
+
+  // Bullet lists: lines starting with - or •
+  html = html.replace(/^[\-•] (.+)$/gm, '<li class="answer-bullet">$1</li>');
+  html = html.replace(/((?:<li class="answer-bullet">.+<\/li>\n?)+)/g, '<ul class="answer-list">$1</ul>');
+
+  // Numbered lists: lines starting with 1. 2. etc.
+  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="answer-numbered">$1</li>');
+  html = html.replace(/((?:<li class="answer-numbered">.+<\/li>\n?)+)/g, '<ol class="answer-list">$1</ol>');
+
+  // Citation markers: [n] -> clickable badge
+  const citationMap = {};
+  if (citations && Array.isArray(citations)) {
+    citations.forEach(c => { citationMap[c.index] = c; });
+  }
+
+  html = html.replace(/\[(\d+)\]/g, (match, num) => {
+    const idx = parseInt(num, 10);
+    const c = citationMap[idx];
+    if (!c) return match; // leave as-is if no matching citation
+    const filename = c.filename || 'Source';
+    const lineRange = (c.start_line && c.end_line) ? `L${c.start_line}-${c.end_line}` : '';
+    const excerpt = (c.text || c.excerpt || '').substring(0, 200);
+    const tooltipContent = escapeHtml(`${filename}${lineRange ? ' ' + lineRange : ''}`);
+    const citId = `cite-${Date.now()}-${idx}`;
+    return `<span class="citation-marker" data-citation-id="${citId}" data-citation-index="${idx}" title="${tooltipContent}" onclick="onCitationClick('${citId}', ${idx})">[${num}]</span>` +
+           `<span class="citation-detail" id="${citId}" style="display:none;">` +
+           `<span class="citation-detail-header"><i class="bi bi-file-earmark-text"></i> ${escapeHtml(filename)}${lineRange ? ' <span class=\\"citation-line-range\\">(' + lineRange + ')</span>' : ''}</span>` +
+           `<span class="citation-detail-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 200 ? '…' : ''}</span>` +
+           `</span>`;
+  });
+
+  // Paragraphs: double newlines
+  html = html.replace(/\n\n/g, '</p><p>');
+  html = '<p>' + html + '</p>';
+  // Single newlines -> <br> (only outside of block elements)
+  html = html.replace(/\n/g, '<br>');
+
+  return html;
+}
+
+/**
+ * Click handler for citation marker: toggles detail popup and highlights source item in Sources list.
+ */
+function onCitationClick(citId, index) {
+  toggleCitationDetail(citId);
+  highlightSourceItem(index);
+}
+
+/**
+ * Toggle citation detail popup visibility.
+ */
+function toggleCitationDetail(citId) {
+  const el = document.getElementById(citId);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'inline-block' : 'none';
+}
+
+/**
+ * Smoothly scroll to and highlight a citation in the Sources list (Spec §15).
+ */
+function highlightSourceItem(index) {
+  const el = document.getElementById(`source-item-${index}`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    el.classList.add('source-highlight');
+    setTimeout(() => el.classList.remove('source-highlight'), 2200);
+  }
+}
+
+/**
+ * Build the Sources list HTML from citations array (Spec §15, §43, §55).
+ */
+function buildSourcesList(citations) {
+  if (!citations || !Array.isArray(citations) || citations.length === 0) return '';
+  
+  let html = '<div class="sources-section mt-3 pt-2 border-top border-secondary border-opacity-25">';
+  html += '<div class="sources-title"><i class="bi bi-journal-bookmark-fill me-1"></i> Sources</div>';
+  html += '<div class="sources-list">';
+  
+  citations.forEach(c => {
+    const filename = (c && c.filename) ? c.filename : 'Source';
+    const lineRange = (c && c.start_line && c.end_line) ? `L${c.start_line}-${c.end_line}` : '';
+    const chunkIdx = c.chunk_index !== undefined ? c.chunk_index : (c.chunk_id !== undefined ? c.chunk_id : null);
+    const chunkLabel = chunkIdx !== null ? `chunk ${chunkIdx}` : '';
+    const rawExcerpt = (c && (c.text || c.excerpt || '')).substring(0, 160);
+    const alsoIn = (c && c.also_available_in && c.also_available_in.length > 0)
+      ? ` <span class="also-available">(Also in: ${c.also_available_in.map(a => escapeHtml(a.filename)).join(', ')})</span>`
+      : '';
+
+    html += `<div class="source-item" id="source-item-${c.index}" onclick="this.querySelector('.source-excerpt').classList.toggle('expanded')">`;
+    html += `<span class="source-index">[${c.index}]</span>`;
+    html += `<span class="source-filename"><i class="bi bi-file-earmark-text"></i> ${escapeHtml(filename)}</span>`;
+    if (chunkLabel || lineRange) {
+      html += `<span class="source-meta">${chunkLabel}${chunkLabel && lineRange ? ' · ' : ''}${lineRange}</span>`;
+    }
+    html += alsoIn;
+    html += `<div class="source-excerpt">${escapeHtml(rawExcerpt)}${rawExcerpt.length >= 160 ? '…' : ''}</div>`;
+    html += `</div>`;
+  });
+  
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Build debug panel HTML (exposes retrieval_stats, query plan, intent router, model, validation — Spec §42, §43).
+ */
+function buildDebugPanel(data) {
+  if (!data || typeof data !== 'object') return '';
+
+  const stats = data.retrieval_stats || {};
+  const intent = data.intent;
+  const plan = data.plan;
+  const subqueries = data.subqueries;
+  const model = data.model;
+  const fallbackUsed = data.fallback_used;
+  const fallbackReason = data.fallback_reason;
+  const validation = data.validation;
+
+  let html = '<div class="debug-panel mt-2">';
+  html += '<div class="debug-toggle" onclick="this.parentElement.classList.toggle(\'expanded\')">';
+  html += '<i class="bi bi-bug me-1"></i> Debug Inspector <i class="bi bi-chevron-down debug-chevron"></i>';
+  html += '</div>';
+  html += '<div class="debug-content p-2">';
+
+  // 1. Intent Router Decision
+  if (intent) {
+    html += `<div class="debug-item mb-2"><span class="debug-key">Intent Router:</span> <span class="badge bg-primary text-light ms-1">${escapeHtml(intent)}</span></div>`;
+  }
+
+  // 2. Query Plan
+  if (plan && Array.isArray(plan) && plan.length > 0) {
+    html += '<div class="debug-item mb-2"><span class="debug-key">Query Plan:</span><ol class="small ps-3 mb-1 text-muted">';
+    plan.forEach(step => {
+      const stepText = typeof step === 'object' ? (step.step || JSON.stringify(step)) : step;
+      html += `<li>${escapeHtml(stepText)}</li>`;
+    });
+    html += '</ol></div>';
+  }
+
+  // 3. Subqueries
+  if (subqueries && Array.isArray(subqueries) && subqueries.length > 1) {
+    html += '<div class="debug-item mb-2"><span class="debug-key">Subqueries:</span><ul class="small ps-3 mb-1 text-muted">';
+    subqueries.forEach(sq => {
+      html += `<li>${escapeHtml(sq)}</li>`;
+    });
+    html += '</ul></div>';
+  }
+
+  // 4. Model & Fallback
+  if (model) {
+    html += `<div class="debug-item mb-2"><span class="debug-key">Model:</span> <span class="debug-val ms-1">${escapeHtml(model)}</span>`;
+    if (fallbackUsed) {
+      html += ` <span class="badge bg-warning text-dark ms-1">Fallback: ${escapeHtml(fallbackReason || 'used')}</span>`;
+    }
+    html += '</div>';
+  }
+
+  // 5. Retrieval Stats Table
+  const statEntries = Object.entries(stats).filter(([k, v]) => v !== undefined && v !== null);
+  if (statEntries.length > 0) {
+    html += '<div class="debug-item mb-1"><span class="debug-key">Retrieval Pipeline Stats:</span></div>';
+    html += '<table class="debug-table mb-2">';
+    statEntries.forEach(([key, val]) => {
+      const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      html += `<tr><td class="debug-key">${escapeHtml(label)}</td><td class="debug-val">${escapeHtml(String(val))}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  // 6. Answer Quality Validation Report
+  if (validation && validation.checks && Array.isArray(validation.checks)) {
+    const valStatus = validation.status || 'passed';
+    const statusBadge = valStatus === 'passed' ? 'bg-success' : 'bg-warning text-dark';
+    html += `<div class="debug-item mt-2 mb-1"><span class="debug-key">Answer Validation:</span> <span class="badge ${statusBadge} ms-1">${escapeHtml(valStatus)}</span></div>`;
+    html += '<table class="debug-table">';
+    validation.checks.forEach(chk => {
+      const icon = chk.passed ? '<span class="text-success fw-bold">✓ Passed</span>' : '<span class="text-danger fw-bold">✗ Failed</span>';
+      const detail = chk.detail ? `<br><small class="text-muted">${escapeHtml(chk.detail)}</small>` : '';
+      html += `<tr><td class="debug-key">${escapeHtml(chk.name)}</td><td class="debug-val">${icon}${detail}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+function appendBotChatMessage(answer, citations = [], debugData = null, debugEnabled = false) {
   const container = document.getElementById('chat-messages-container');
   if (!container) return;
 
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble chat-bubble-bot';
 
-  let citationHtml = '';
-  if (citations && citations.length > 0) {
-    citationHtml = '<div class="mt-2 pt-2 border-top border-secondary opacity-75">' +
-      citations.map(c => `<span class="citation-pill" title="${escapeHtml(c.text.substring(0, 100))}..."><i class="bi bi-file-earmark-text"></i> ${escapeHtml(c.filename)} (c#${c.chunk_id})</span>`).join('') +
-      '</div>';
-  }
-
-  let statsHtml = '';
-  if (stats && stats.execution_time_ms) {
-    statsHtml = `<div class="mt-1"><span class="retrieval-stat-badge"><i class="bi bi-lightning-charge"></i> ${stats.execution_time_ms}ms &bull; ${stats.reranked_chunks || 0} chunks</span></div>`;
-  }
+  // Render answer with markdown formatting and clickable [n] citations
+  const answerHtml = renderAnswerMarkdown(answer, citations);
+  
+  // Sources list
+  const sourcesHtml = buildSourcesList(citations);
+  
+  // Debug panel (only when debug is enabled and debugData present)
+  const debugHtml = (debugEnabled && debugData) ? buildDebugPanel(debugData) : '';
 
   bubble.innerHTML = `
-    <div>${escapeHtml(answer)}</div>
-    ${citationHtml}
-    ${statsHtml}
+    <div class="bot-answer-content">${answerHtml}</div>
+    ${sourcesHtml}
+    ${debugHtml}
   `;
 
   container.appendChild(bubble);
@@ -453,10 +647,10 @@ async function loadRunHistory() {
       item.innerHTML = `
         <div class="d-flex justify-content-between align-items-center">
           <h6 class="fw-semibold mb-0">${escapeHtml(r.name)}</h6>
-          <span class="badge bg-secondary small">${r.mode}</span>
+          <span class="badge bg-secondary small">${r.mode.toUpperCase()}</span>
         </div>
         <div class="text-muted small mt-1">
-          <span>Docs: ${r.doc_count}</span> &bull; <span>Clusters: ${r.cluster_count || 0}</span> &bull; <span>${r.created_at ? r.created_at.substring(0, 16) : ''}</span>
+          <span>Docs: ${r.doc_count}</span> &bull; <span>Clusters: ${r.cluster_count || 0}</span> &bull; <span class="text-dim">${r.created_at ? r.created_at.substring(0, 16) : ''}</span>
         </div>
       `;
       item.onclick = () => {
